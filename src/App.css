@@ -1,0 +1,9 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: #f7f8f7; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif; }
+button:active { transform: scale(0.96); opacity: 0.84; }
+a:active { opacity: 0.82; }
+::-webkit-scrollbar { width: 0; height: 0; }
+input:focus { outline: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.fade { animation: fadeIn 0.2s ease; }
