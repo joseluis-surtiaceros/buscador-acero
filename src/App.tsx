@@ -1,338 +1,789 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import './App.css'
-import { PRODUCTS, ProductEntry } from './products'
+// SurtielekLanding.tsx
+// Drop into your Next.js or Vite + React project.
+// No external dependencies beyond React itself.
+// Google Fonts loaded via <link> tag inside the component.
 
-const API = 'https://surtiaceros.com/wp-json/surtiaceros/v1/tubular'
-const LOGO = 'https://surtiaceros.com/wp-content/uploads/2025/12/logo-surtiaceros.png'
+import { useState, useEffect, useRef } from "react";
 
-const CAT_ICONS: Record<string, string> = {
-  Tubulares: '⬛', Ángulos: '∟', Soleras: '▬', Redondo: '◉', Vigas: 'I',
-  Placa: '▪', 'Tubo Negro': '○', 'Tubo Mofle': '◌', Polín: '⊏',
-  Varilla: '╱', 'Lámina Negra': '▤', 'Lámina Galvanizada': '▥', 'Cuadrados Sólidos': '■',
-}
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
 
-const CATS = [...new Set(Object.values(PRODUCTS).map(v => v[3]))].sort()
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-const peso = (n: number) =>
-  new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n)
+  :root {
+    --white:    #ffffff;
+    --off:      #f7f8f6;
+    --gray50:   #f9fafb;
+    --gray100:  #f3f4f6;
+    --gray200:  #e5e7eb;
+    --gray400:  #9ca3af;
+    --gray600:  #4b5563;
+    --gray800:  #1f2937;
+    --gray900:  #111827;
+    --green:    #16a34a;
+    --green2:   #15803d;
+    --green3:   #dcfce7;
+    --greenmid: #22c55e;
+  }
 
-const C = {
-  bg: '#f7f8f7', surface: '#fff', surfaceAlt: '#f2f4f2',
-  border: '#e5e8e5', active: '#16a34a',
-  accent: '#16a34a', accentLight: '#f0fdf4', accentBorder: 'rgba(22,163,74,0.22)',
-  text: '#111411', textSub: '#5a6b5a', textMuted: '#9aaa9a',
-  card: '#1c1f1c', cardBorder: 'rgba(255,255,255,0.07)',
-  onCard: '#f0f4f0', onCardSub: 'rgba(240,244,240,0.55)', onCardMuted: 'rgba(240,244,240,0.28)',
-  shadow: 'rgba(0,0,0,0.05)', shadowMd: 'rgba(0,0,0,0.09)',
-}
+  section[id], div[id] { scroll-margin-top: 68px; }
+  html { scroll-behavior: smooth; }
 
-function useWindowWidth() {
-  const [w, setW] = useState(window.innerWidth)
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--white);
+    color: var(--gray900);
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  .nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 5vw; height: 68px;
+    background: rgba(255,255,255,0.94);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--gray200);
+  }
+  .nav-logo {
+    font-family: 'DM Serif Display', sans-serif; font-weight: 800; font-size: 1.4rem;
+    letter-spacing: -0.02em; color: var(--gray900); text-decoration: none; display: flex; align-items: center; gap: 6px;
+  }
+  .nav-logo-dot { width: 9px; height: 9px; background: var(--green); border-radius: 50%; display: inline-block; }
+  .nav-links { display: flex; gap: 2.2rem; list-style: none; align-items: center; }
+  .nav-links a {
+    font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 500;
+    color: var(--gray600); text-decoration: none; letter-spacing: 0.01em;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--green); }
+  .nav-btn {
+    background: var(--green); color: white !important; padding: 0.5rem 1.3rem;
+    border-radius: 6px; font-weight: 600 !important; font-size: 0.85rem !important;
+    transition: background 0.2s !important;
+  }
+  .nav-btn:hover { background: var(--green2) !important; }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh; padding: 68px 5vw 0;
+    display: grid; grid-template-columns: 1fr 1fr;
+    align-items: center; gap: 4rem;
+    background: var(--white); position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 50%;
+    background: var(--off); z-index: 0;
+  }
+  .hero-left { position: relative; z-index: 1; }
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: var(--green3); color: var(--green2);
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; padding: 0.35rem 0.9rem; border-radius: 100px;
+    margin-bottom: 2rem;
+  }
+  .hero-tag-dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; }
+  .hero h1 {
+    font-family: 'DM Serif Display', sans-serif; font-weight: 800;
+    font-size: clamp(2.6rem, 4.5vw, 4.4rem); line-height: 1.05;
+    letter-spacing: -0.03em; color: var(--gray900); margin-bottom: 1.5rem;
+  }
+  .hero h1 .accent { color: var(--green); }
+  .hero-sub {
+    font-size: 1rem; font-weight: 300; line-height: 1.75;
+    color: var(--gray600); max-width: 440px; margin-bottom: 2.5rem;
+  }
+  .hero-actions { display: flex; gap: 0.9rem; flex-wrap: wrap; }
+
+  .btn-green {
+    display: inline-block; background: var(--green); color: white;
+    font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.9rem;
+    text-decoration: none; padding: 0.85rem 2rem; border-radius: 6px;
+    transition: background 0.2s, transform 0.15s; border: none; cursor: pointer;
+  }
+  .btn-green:hover { background: var(--green2); transform: translateY(-2px); }
+
+  .btn-outline {
+    display: inline-block; background: transparent; color: var(--gray700);
+    font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 0.9rem;
+    text-decoration: none; padding: 0.85rem 2rem; border-radius: 6px;
+    border: 1.5px solid var(--gray200); transition: border-color 0.2s, color 0.2s, transform 0.15s;
+    cursor: pointer;
+  }
+  .btn-outline:hover { border-color: var(--green); color: var(--green); transform: translateY(-2px); }
+
+  /* hero right panel */
+  .hero-right {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; gap: 1rem; padding: 3rem 0;
+  }
+
+  .hero-card {
+    background: var(--white); border: 1px solid var(--gray200); border-radius: 12px;
+    padding: 1.5rem 1.8rem; display: flex; align-items: center; gap: 1.2rem;
+    transition: box-shadow 0.25s, transform 0.25s;
+    animation: slideIn 0.6s ease both;
+  }
+  .hero-card:hover { box-shadow: 0 8px 32px rgba(22,163,74,0.10); transform: translateX(-4px); }
+  .hero-card:nth-child(1) { animation-delay: 0.1s; }
+  .hero-card:nth-child(2) { animation-delay: 0.2s; margin-left: 2rem; }
+  .hero-card:nth-child(3) { animation-delay: 0.3s; }
+
+  .hcard-icon {
+    width: 52px; height: 52px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem; flex-shrink: 0;
+  }
+  .hcard-icon.green { background: var(--green3); }
+  .hcard-icon.gray  { background: var(--gray100); }
+
+  .hcard-body h4 {
+    font-family: 'DM Serif Display', sans-serif; font-weight: 700; font-size: 0.95rem;
+    color: var(--gray900); margin-bottom: 0.2rem;
+  }
+  .hcard-body p { font-size: 0.78rem; color: var(--gray400); font-weight: 400; }
+
+  /* ── TICKER ── */
+  .ticker { background: var(--gray900); padding: 0.85rem 0; overflow: hidden; }
+  .ticker-track { display: inline-flex; white-space: nowrap; animation: scroll-left 25s linear infinite; }
+  .ticker-item {
+    font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--gray400); padding: 0 2.5rem;
+  }
+  .ticker-item b { color: var(--greenmid); font-weight: 600; }
+  @keyframes scroll-left { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+  /* ── STATS ── */
+  .stats {
+    background: var(--white); border-bottom: 1px solid var(--gray200);
+    display: grid; grid-template-columns: repeat(4, 1fr);
+  }
+  .stat {
+    padding: 2.5rem 2rem; text-align: center;
+    border-right: 1px solid var(--gray200);
+  }
+  .stat:last-child { border-right: none; }
+  .stat-n {
+    font-family: 'DM Serif Display', sans-serif; font-weight: 800; font-size: 2.4rem;
+    color: var(--green); line-height: 1; margin-bottom: 0.3rem;
+  }
+  .stat-l { font-size: 0.78rem; font-weight: 500; color: var(--gray400); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ── SECTIONS ── */
+  .section { padding: 7rem 5vw; }
+  .section-alt { background: var(--off); }
+
+  .section-header { margin-bottom: 4rem; }
+  .section-tag {
+    display: inline-block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--green); margin-bottom: 0.8rem;
+  }
+  .section-title {
+    font-family: 'DM Serif Display', sans-serif; font-weight: 800;
+    font-size: clamp(1.8rem, 3vw, 2.8rem); letter-spacing: -0.02em;
+    color: var(--gray900); line-height: 1.1; margin-bottom: 1rem;
+  }
+  .section-sub { font-size: 0.95rem; font-weight: 300; color: var(--gray600); max-width: 520px; line-height: 1.7; }
+
+  /* ── CATEGORY CARDS ── */
+  .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+
+  .cat-card {
+    border: 1px solid var(--gray200); border-radius: 14px; overflow: hidden;
+    background: var(--white); transition: box-shadow 0.25s, transform 0.25s;
+    display: flex; flex-direction: column;
+  }
+  .cat-card:hover { box-shadow: 0 12px 40px rgba(0,0,0,0.08); transform: translateY(-4px); }
+
+  .cat-header {
+    padding: 2.2rem 2rem 1.5rem;
+    border-bottom: 1px solid var(--gray100);
+  }
+  .cat-header.drywall  { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); }
+  .cat-header.elec     { background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); }
+  .cat-header.plumb    { background: linear-gradient(135deg, #f0fdf4 0%, #f9fafb 100%); }
+
+  .cat-icon { font-size: 2.4rem; margin-bottom: 1rem; display: block; }
+  .cat-num {
+    font-family: 'DM Sans', sans-serif; font-size: 0.65rem; font-weight: 600;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--gray400); margin-bottom: 0.5rem;
+  }
+  .cat-title {
+    font-family: 'DM Serif Display', sans-serif; font-weight: 800; font-size: 1.3rem;
+    color: var(--gray900); margin-bottom: 0.5rem;
+  }
+  .cat-desc { font-size: 0.82rem; color: var(--gray600); font-weight: 300; line-height: 1.6; }
+
+  .cat-body { padding: 1.5rem 2rem; flex: 1; }
+
+  .product-list { list-style: none; display: flex; flex-direction: column; gap: 0; }
+  .product-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.7rem 0; border-bottom: 1px solid var(--gray100);
+    font-size: 0.82rem; color: var(--gray600); font-weight: 400;
+    transition: color 0.15s;
+  }
+  .product-item:last-child { border-bottom: none; }
+  .product-item:hover { color: var(--green); }
+  .product-item::before {
+    content: ''; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--green); margin-right: 0.8rem; flex-shrink: 0; opacity: 0.5;
+  }
+  .product-badge {
+    font-size: 0.65rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.15rem 0.5rem;
+    background: var(--green3); color: var(--green2); border-radius: 4px;
+  }
+
+  .cat-footer { padding: 1.2rem 2rem; border-top: 1px solid var(--gray100); }
+  .cat-link {
+    font-size: 0.82rem; font-weight: 600; color: var(--green);
+    text-decoration: none; display: flex; align-items: center; gap: 0.4rem;
+    transition: gap 0.2s;
+  }
+  .cat-link:hover { gap: 0.7rem; }
+
+  /* ── NOSOTROS ── */
+  .nosotros-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 5rem; align-items: center; margin-bottom: 5rem;
+  }
+  .nosotros-text { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; }
+  .nosotros-text p { font-size: 0.95rem; font-weight: 400; color: var(--gray600); line-height: 1.8; }
+  .nosotros-text strong { color: var(--gray900); font-weight: 600; }
+
+  .cobertura { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.5rem; }
+  .cob-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gray400); margin-right: 0.3rem; }
+  .cob-pill {
+    font-size: 0.75rem; font-weight: 500; padding: 0.3rem 0.8rem;
+    border-radius: 100px; background: var(--white); border: 1px solid var(--gray200);
+    color: var(--gray700);
+  }
+  .cob-pill-alt { background: var(--green3); border-color: transparent; color: var(--green2); font-weight: 600; }
+
+  /* equipo photo */
+  .equipo-wrap {
+    position: relative; border-radius: 16px; overflow: hidden;
+    aspect-ratio: 4/3; box-shadow: 0 16px 48px rgba(0,0,0,0.10);
+  }
+  .equipo-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .equipo-badge {
+    position: absolute; bottom: 1.2rem; left: 1.2rem;
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(8px);
+    border-radius: 10px; padding: 0.7rem 1.1rem;
+    display: flex; flex-direction: column; gap: 0.1rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  .equipo-badge-year { font-family: 'DM Serif Display', serif; font-size: 1.5rem; color: var(--green); line-height: 1; }
+  .equipo-badge-label { font-size: 0.68rem; font-weight: 500; color: var(--gray600); letter-spacing: 0.04em; }
+
+  /* 4 pilares */
+  .pilares-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem; border-top: 1px solid var(--gray200); padding-top: 3.5rem;
+  }
+  .pilar-card {
+    background: var(--white); border: 1px solid var(--gray200); border-radius: 12px;
+    padding: 1.8rem 1.5rem; transition: box-shadow 0.25s, transform 0.2s;
+  }
+  .pilar-card:hover { box-shadow: 0 8px 28px rgba(22,163,74,0.09); transform: translateY(-3px); }
+  .pilar-icon { font-size: 1.8rem; margin-bottom: 1rem; display: block; }
+  .pilar-title { font-family: 'DM Serif Display', serif; font-size: 1rem; color: var(--gray900); margin-bottom: 0.5rem; }
+  .pilar-desc { font-size: 0.8rem; color: var(--gray600); line-height: 1.65; font-weight: 400; }
+
+  /* ── CTA ── */
+  .cta-section {
+    background: var(--gray900); padding: 8rem 5vw; text-align: center; position: relative; overflow: hidden;
+  }
+  .cta-section::before {
+    content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(22,163,74,0.12), transparent 70%);
+    border-radius: 50%; pointer-events: none;
+  }
+  .cta-tag {
+    display: inline-block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--greenmid); margin-bottom: 1.2rem;
+  }
+  .cta-title {
+    font-family: 'DM Serif Display', sans-serif; font-weight: 800;
+    font-size: clamp(2rem, 4vw, 4rem); color: white;
+    letter-spacing: -0.03em; line-height: 1.05; margin-bottom: 1.2rem; position: relative;
+  }
+  .cta-title .g { color: var(--greenmid); }
+  .cta-sub { font-size: 0.95rem; color: var(--gray400); max-width: 380px; margin: 0 auto 3rem; line-height: 1.7; font-weight: 300; }
+  .cta-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+
+  .btn-white {
+    display: inline-block; background: white; color: var(--gray900);
+    font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.9rem;
+    text-decoration: none; padding: 0.9rem 2rem; border-radius: 6px;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255,255,255,0.15); }
+
+  .btn-green-outline {
+    display: inline-block; border: 1.5px solid rgba(255,255,255,0.15); color: white;
+    font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 0.9rem;
+    text-decoration: none; padding: 0.9rem 2rem; border-radius: 6px;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .btn-green-outline:hover { border-color: var(--greenmid); color: var(--greenmid); transform: translateY(-2px); }
+
+  .contact-row {
+    display: flex; justify-content: center; gap: 3rem; margin-top: 4rem; flex-wrap: wrap;
+  }
+  .contact-item { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+  .contact-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gray400); }
+  .contact-val { font-size: 0.92rem; font-weight: 500; color: white; }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--gray900); border-top: 1px solid rgba(255,255,255,0.07);
+    padding: 2rem 5vw; display: flex; align-items: center;
+    justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+  }
+  .footer-logo {
+    font-family: 'DM Serif Display', sans-serif; font-weight: 800; font-size: 1.2rem;
+    color: white; display: flex; align-items: center; gap: 6px;
+  }
+  .footer-copy { font-size: 0.75rem; color: var(--gray400); }
+  .footer-group { font-size: 0.75rem; color: var(--gray400); }
+  .footer-group span { color: rgba(255,255,255,0.5); }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes slideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+  .fade-hero { animation: fadeUp 0.8s ease both; }
+  .fade-hero-2 { animation: fadeUp 0.8s 0.15s ease both; }
+  .fade-hero-3 { animation: fadeUp 0.8s 0.28s ease both; }
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.55s ease, transform 0.55s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  .delay-1 { transition-delay: 0.1s; }
+  .delay-2 { transition-delay: 0.2s; }
+
+  .nav-logo-img {
+    height: 40px; width: auto; object-fit: contain; display: block;
+  }
+
+  /* ── FACHADA ── */
+  .fachada-wrap {
+    position: relative; border-radius: 16px; overflow: hidden;
+    aspect-ratio: 4/3;
+  }
+  .fachada-img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    filter: brightness(0.55);
+  }
+  .fachada-overlay {
+    position: absolute; inset: 0; padding: 2.5rem;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 55%);
+  }
+
+
+  .btn-catalog {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: var(--white); color: var(--green2);
+    font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.92rem;
+    text-decoration: none; padding: 0.85rem 1.8rem; border-radius: 8px;
+    border: 2px solid var(--green);
+    box-shadow: 0 2px 12px rgba(22,163,74,0.12);
+    transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+    letter-spacing: 0.01em;
+  }
+  .btn-catalog:hover {
+    background: var(--green3);
+    box-shadow: 0 6px 24px rgba(22,163,74,0.2);
+    transform: translateY(-2px);
+  }
+
+  .btn-catalog-dark {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: transparent; color: white;
+    font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.92rem;
+    text-decoration: none; padding: 0.85rem 1.8rem; border-radius: 8px;
+    border: 2px solid var(--greenmid);
+    transition: background 0.2s, transform 0.15s;
+    letter-spacing: 0.01em;
+  }
+  .btn-catalog-dark:hover {
+    background: rgba(34,197,94,0.1);
+    transform: translateY(-2px);
+  }
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:960px){
+    .hero { grid-template-columns: 1fr; padding-top:100px; }
+    .hero::before { display: none; }
+    .hero-right { padding: 0 0 2rem; }
+    .hero-card:nth-child(2) { margin-left: 0; }
+    .cat-grid { grid-template-columns: 1fr; }
+    .nosotros-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+    .pilares-grid { grid-template-columns: repeat(2, 1fr); }
+    .stats { grid-template-columns: repeat(2,1fr); }
+    .stat:nth-child(2) { border-right: none; }
+    .nav-links { display: none; }
+  }
+  @media(max-width:560px){
+    .pilares-grid { grid-template-columns: 1fr; }
+  }
+`;
+
+const DRYWALL_PRODUCTS = [
+  { name: "Panel Tablaroca Estándar 1/2\"", badge: "Stock" },
+  { name: "Panel Resistente a Humedad 5/8\"", badge: "" },
+  { name: "Perfil Riel 3-5/8\"", badge: "Stock" },
+  { name: "Perfil Poste 3-5/8\"", badge: "Stock" },
+  { name: "Compuesto para Juntas", badge: "" },
+  { name: "Cinta de Papel y Malla", badge: "Stock" },
+  { name: "Tornillo Punta Fina / Punta Broca", badge: "Stock" },
+];
+
+const ELEC_PRODUCTS = [
+  { name: "Cable THW 12, 10, 8 AWG", badge: "Stock" },
+  { name: "Cable THHW-LS 600V", badge: "Stock" },
+  { name: "Conduit EMT 1/2\" – 2\"", badge: "Stock" },
+  { name: "Tablero de Distribución 8-24 Circuitos", badge: "" },
+  { name: "Interruptores Termo 1P / 2P", badge: "Stock" },
+  { name: "Contactos e Interruptores de Pared", badge: "Stock" },
+  { name: "Luminarias LED Panel / Spot", badge: "" },
+];
+
+const PLUMB_PRODUCTS = [
+  { name: "Tubería CPVC 1/2\" – 2\"", badge: "Stock" },
+  { name: "Tubería PVC Sanitario", badge: "Stock" },
+  { name: "Codos, Tees y Uniones CPVC", badge: "Stock" },
+  { name: "Llaves de Paso 1/2\" – 1\"", badge: "Stock" },
+  { name: "Registros y Coladeras PVC", badge: "" },
+  { name: "Tubo Multicapa PEX/AL/PEX", badge: "" },
+  { name: "Pegamento y Limpiador PVC", badge: "Stock" },
+];
+
+const WHY_ITEMS = [
+  { icon: "📦", title: "Stock permanente", desc: "Producto en bodega listo para entrega inmediata. Sin tiempos de espera que retrasen tu obra." },
+  { icon: "💲", title: "Precio de distribuidor", desc: "Márgenes competitivos para contratistas y constructores. Volumen = mejor precio." },
+  { icon: "🤝", title: "Asesoría técnica real", desc: "Nuestro equipo conoce los materiales. Te orientamos en especificación y cantidades." },
+  { icon: "🏢", title: "Respaldo Surtiaceros", desc: "Parte del grupo Surtiaceros del Pacífico. La misma seriedad de siempre, nueva línea de producto." },
+];
+
+const TICKER_ITEMS = [
+  "Cable THW", "Panel Tablaroca", "Tubería CPVC", "Conduit EMT",
+  "Interruptores", "Perfil Riel", "Llaves de Paso", "Tableros",
+  "Compuesto para Juntas", "Luminarias LED", "Registros PVC",
+];
+
+export default function SurtielekLanding() {
+  const [activeSection, setActiveSection] = useState("");
+  const revealRefs = useRef<HTMLElement[]>([]);
+
   useEffect(() => {
-    const fn = () => setW(window.innerWidth)
-    window.addEventListener('resize', fn)
-    return () => window.removeEventListener('resize', fn)
-  }, [])
-  return w
-}
+    // Scroll reveal
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add("in"); }),
+      { threshold: 0.12 }
+    );
+    document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
 
-interface LivePrice { price: number | null; url: string | null; stock: boolean | null; loading: boolean; ok: boolean }
+    // Nav highlight
+    const onScroll = () => {
+      let cur = "";
+      document.querySelectorAll("section[id]").forEach((s) => {
+        if (window.scrollY >= (s as HTMLElement).offsetTop - 80) cur = s.id;
+      });
+      setActiveSection(cur);
+    };
+    window.addEventListener("scroll", onScroll);
+    return () => { io.disconnect(); window.removeEventListener("scroll", onScroll); };
+  }, []);
 
-function useLivePrice(slug: string | null): LivePrice {
-  const [s, setS] = useState<LivePrice>({ price: null, url: null, stock: null, loading: false, ok: false })
-  useEffect(() => {
-    if (!slug) return
-    setS(p => ({ ...p, loading: true }))
-    const ctrl = new AbortController()
-    fetch(`${API}/${slug}`, { signal: ctrl.signal })
-      .then(r => { if (!r.ok) throw new Error(); return r.json() })
-      .then((d: { price: string; url: string; in_stock: boolean }) =>
-        setS({ price: parseFloat(d.price), url: d.url, stock: d.in_stock, loading: false, ok: true }))
-      .catch((e: Error) => { if (e.name !== 'AbortError') setS({ price: null, url: null, stock: null, loading: false, ok: false }) })
-    return () => ctrl.abort()
-  }, [slug])
-  return s
-}
-
-function ResultCard({ slug, product }: { slug: string; product: ProductEntry }) {
-  const [title, sku, weight, cat] = product
-  const lp = useLivePrice(slug)
-  const waMsg = `Hola Surtiaceros, me interesa cotizar:\n\n*${title}*\nSKU: ${sku}\nPeso: ${weight} kg\n💰 ${lp.ok && lp.price ? peso(lp.price) : 'ver precio en línea'}\n\n¿Pueden confirmar disponibilidad?`
-  const mailBody = `Hola,\n\nMe interesa cotizar:\n\n${title}\nSKU: ${sku}\nPeso: ${weight} kg\n${lp.ok && lp.price ? `Precio: ${peso(lp.price)} (IVA incluido)\n` : ''}\nFavor de confirmar disponibilidad.\n\nGracias.`
+  const tickerContent = [...TICKER_ITEMS, ...TICKER_ITEMS];
 
   return (
-    <div className="fade" style={{ background: C.card, borderRadius: 20, padding: 18, marginBottom: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.13)' }}>
-      <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${C.cardBorder}` }}>
-        <div style={{ fontSize: 10, color: 'rgba(74,222,128,0.7)', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 5 }}>
-          <span style={{ width: 5, height: 5, borderRadius: 99, background: '#4ade80', display: 'inline-block', marginRight: 5, verticalAlign: 'middle' }} />
-          {CAT_ICONS[cat] ?? '●'} {cat}
-        </div>
-        <div style={{ fontSize: 17, fontWeight: 900, color: C.onCard, letterSpacing: '-0.025em', lineHeight: 1.25 }}>{title}</div>
-        <div style={{ fontSize: 11.5, color: C.onCardSub, marginTop: 3 }}>SKU: {sku} · {weight} kg</div>
-      </div>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: STYLES }} />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 14 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
-            <span style={{ fontSize: 10, color: C.onCardMuted, letterSpacing: '0.07em', textTransform: 'uppercase', fontWeight: 600 }}>Precio</span>
-            {lp.loading && <div style={{ width: 12, height: 12, borderRadius: 99, border: '2px solid rgba(255,255,255,0.12)', borderTopColor: '#4ade80', animation: 'spin 0.7s linear infinite' }} />}
-            {!lp.loading && (
-              <span style={{
-                fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 10, letterSpacing: '0.05em', textTransform: 'uppercase',
-                background: lp.ok ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
-                color: lp.ok ? '#4ade80' : 'rgba(240,244,240,0.35)',
-                border: `1px solid ${lp.ok ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.08)'}`,
-              }}>
-                {lp.ok ? '✓ surtiaceros.com' : 'sin precio en línea'}
-              </span>
-            )}
-          </div>
-          {lp.loading
-            ? <div style={{ fontSize: 32, fontWeight: 900, color: 'rgba(255,255,255,0.15)', letterSpacing: '-0.04em', lineHeight: 1 }}>···</div>
-            : lp.ok && lp.price
-              ? <div style={{ fontSize: 36, fontWeight: 900, color: '#fff', letterSpacing: '-0.04em', lineHeight: 1 }}>{peso(lp.price)}</div>
-              : <div style={{ fontSize: 14, color: C.onCardSub, fontStyle: 'italic', marginTop: 4 }}>Cotizar con un agente</div>
-          }
-          {lp.ok && <div style={{ fontSize: 10, color: C.onCardMuted, marginTop: 2 }}>IVA incluido</div>}
-        </div>
-        {lp.ok && (
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: 10, color: C.onCardMuted, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 3, fontWeight: 600 }}>Disponibilidad</div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: lp.stock ? '#4ade80' : '#f87171' }}>{lp.stock ? '✓ En stock' : 'Sin stock'}</div>
-          </div>
-        )}
-      </div>
-
-      {lp.ok && lp.url && (
-        <a href={lp.url} target="_blank" rel="noopener noreferrer" style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-          marginBottom: 12, padding: '8px', borderRadius: 9,
-          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
-          color: '#4ade80', fontSize: 11.5, fontWeight: 600, textDecoration: 'none',
-        }}>↗ Ver en surtiaceros.com</a>
-      )}
-
-      <div style={{ display: 'flex', gap: 8 }}>
-        <a href={`https://wa.me/526616137040?text=${encodeURIComponent(waMsg)}`}
-          target="_blank" rel="noopener noreferrer" style={{
-            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-            padding: '13px', borderRadius: 13, background: '#22c55e', color: '#fff',
-            textDecoration: 'none', fontSize: 14, fontWeight: 800, boxShadow: '0 3px 12px rgba(34,197,94,0.28)',
-          }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.558 4.121 1.532 5.856L.057 23.882l6.198-1.627A11.944 11.944 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.891 0-3.667-.52-5.184-1.426l-.371-.22-3.681.965.982-3.588-.242-.38A9.937 9.937 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-          </svg>
-          WhatsApp
+      {/* ── NAV ── */}
+      <nav className="nav">
+        <a href="#inicio" className="nav-logo">
+          {/* LOGO: pon "logo-surtielek.jpg" en /public/logo-surtielek.jpg */}
+          <img src="/logo-surtielek.jpg" alt="Surtielek" className="nav-logo-img" />
         </a>
-        <a href={`mailto:contacto@surtiaceros.com?subject=${encodeURIComponent('Cotización: ' + title)}&body=${encodeURIComponent(mailBody)}`}
-          style={{
-            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '13px', borderRadius: 13,
-            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-            color: C.onCardSub, textDecoration: 'none', fontSize: 13, fontWeight: 700,
-          }}>
-          Correo
-        </a>
-      </div>
-    </div>
-  )
-}
+        <ul className="nav-links">
+          {[["#productos", "Productos"], ["#nosotros", "Nosotros"], ["#contacto", "Contacto"]].map(([href, label]) => (
+            <li key={href}>
+              <a href={href} style={activeSection === href.slice(1) ? { color: "var(--green)" } : {}}>
+                {label}
+              </a>
+            </li>
+          ))}
+          <li><a href="#contacto" className="nav-btn">Cotizar</a></li>
+        </ul>
+      </nav>
 
-function App() {
-  const winW = useWindowWidth()
-  const isMobile = winW < 600
-  const [cat, setCat] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState<string | null>(null)
+      {/* ── HERO ── */}
+      <section className="hero" id="inicio">
+        <div className="hero-left">
+          <p className="hero-tag fade-hero"><span className="hero-tag-dot" />Suministros para Construcción</p>
+          <h1 className="fade-hero-2">
+            Todo el material<br />que tu obra<br /><span className="accent">necesita.</span>
+          </h1>
+          <p className="hero-sub fade-hero-3">
+            Tablaroca, materiales eléctricos y plomería. Surtimos contratistas y constructores
+            en el noroeste de México con producto en stock y entrega rápida.
+          </p>
+          <div className="hero-actions fade-hero-3">
+            <a href="#contacto" className="btn-green">Solicitar Cotización</a>
+            <a href="#productos" className="btn-outline">Ver Catálogo</a>
+          </div>
+          <div style={{ marginTop: "1.2rem" }} className="fade-hero-3">
+            <a
+              href="https://surtiaceros.com/surtielek"
+              target="_blank"
+              rel="noreferrer"
+              className="btn-catalog"
+            >
+              🛒 Consultar precios y productos
+            </a>
+          </div>
+        </div>
 
-  const catProducts = useMemo(() => {
-    if (!cat) return []
-    return Object.entries(PRODUCTS)
-      .filter(([, v]) => v[3] === cat)
-      .sort((a, b) => a[1][0].localeCompare(b[1][0], 'es'))
-  }, [cat])
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return catProducts
-    const q = search.toLowerCase()
-    return catProducts.filter(([slug, [title, sku]]) =>
-      title.toLowerCase().includes(q) || sku.toLowerCase().includes(q) || slug.includes(q))
-  }, [catProducts, search])
-
-  const reset = useCallback(() => { setCat(null); setSelected(null); setSearch('') }, [])
-  const selectCat = useCallback((c: string) => { setCat(c); setSelected(null); setSearch('') }, [])
-  const selectedProduct = selected ? PRODUCTS[selected] : null
-
-  return (
-    <div style={{ minHeight: '100dvh', background: C.bg, color: C.text, display: 'flex', flexDirection: 'column' }}>
-
-      {/* Top Bar */}
-      <div style={{
-        background: 'rgba(247,248,247,0.93)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
-        borderBottom: `1px solid ${C.border}`, padding: '0 18px', position: 'sticky', top: 0, zIndex: 100,
-      }}>
-        <div style={{ maxWidth: 580, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 52 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer' }} onClick={reset}>
-            <img src={LOGO} alt="Surtiaceros" style={{ height: 26, width: 'auto', objectFit: 'contain', borderRadius: 4 }} />
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: C.text, letterSpacing: '-0.01em', lineHeight: 1 }}>
-                {cat ?? 'Cotizador de Acero'}
+        <div className="hero-right">
+          {[
+            { icon: "🏗️", label: "Tablaroca & Drywall", sub: "Panel, perfilería, compuesto, fijaciones", cls: "green" },
+            { icon: "⚡", label: "Materiales Eléctricos", sub: "Cable, conduit, tableros, luminarias", cls: "gray" },
+            { icon: "🔧", label: "Plomería", sub: "Tubería, llaves, conexiones, registros", cls: "green" },
+          ].map(({ icon, label, sub, cls }) => (
+            <div className="hero-card" key={label}>
+              <div className={`hcard-icon ${cls}`}>{icon}</div>
+              <div className="hcard-body">
+                <h4>{label}</h4>
+                <p>{sub}</p>
               </div>
-              <div style={{ fontSize: 9.5, color: C.accent, letterSpacing: '0.06em', fontWeight: 700 }}>SURTIACEROS</div>
             </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── STATS ── */}
+      <div className="stats">
+        {[
+          { n: "+500", l: "SKUs en catálogo" },
+          { n: "3", l: "Líneas especializadas" },
+          { n: "24h", l: "Entrega local" },
+          { n: "NW", l: "Cobertura México" },
+        ].map(({ n, l }) => (
+          <div className="stat reveal" key={l}>
+            <div className="stat-n">{n}</div>
+            <div className="stat-l">{l}</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {cat && (
-              <button onClick={reset} style={{
-                padding: '5px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                background: C.accentLight, border: `1px solid ${C.accentBorder}`, color: C.accent,
-              }}>← Categorías</button>
-            )}
-            <div style={{ fontSize: 11, color: C.textSub, background: C.surfaceAlt, border: `1px solid ${C.border}`, padding: '4px 9px', borderRadius: 20 }}>
-              Precios <span style={{ color: C.accent, fontWeight: 700 }}>en vivo</span>
-            </div>
-          </div>
+        ))}
+      </div>
+
+      {/* ── TICKER ── */}
+      <div className="ticker">
+        <div className="ticker-track">
+          {tickerContent.map((item, i) => (
+            <span className="ticker-item" key={i}>
+              {i % 3 === 0 ? <b>{item}</b> : item}
+              <span style={{ marginLeft: "2.5rem", color: "var(--green)", opacity: 0.4 }}>·</span>
+            </span>
+          ))}
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        <div style={{ maxWidth: 580, margin: '0 auto', padding: isMobile ? '16px 14px 80px' : '20px 20px 60px' }}>
-
-          {/* Step 0 — Categories */}
-          {!cat && (
-            <div className="fade">
-              <div style={{ fontSize: 22, fontWeight: 800, color: C.text, letterSpacing: '-0.03em', marginBottom: 6 }}>
-                ¿Qué producto necesitas?
-              </div>
-              <div style={{ fontSize: 14, color: C.textSub, marginBottom: 20 }}>Selecciona una categoría</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
-                {CATS.map((c, i) => (
-                  <button
-                    key={c}
-                    onClick={() => selectCat(c)}
-                    className="cat-card"
-                    data-cat={c}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '14px 16px', borderRadius: 16, textAlign: 'left',
-                      border: `1.5px solid ${C.border}`, background: C.surface, cursor: 'pointer',
-                      boxShadow: `0 2px 6px ${C.shadow}`, transition: 'border-color 0.14s, box-shadow 0.14s',
-                      animationDelay: `${i * 55}ms`,
-                    }}
-                  >
-                    <span
-                      className="cat-icon"
-                      style={{ fontSize: 22, flexShrink: 0, width: 30, textAlign: 'center', animationDelay: `${i * 55 + 80}ms` }}
-                    >
-                      {CAT_ICONS[c] ?? '●'}
-                    </span>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{c}</div>
-                      <div style={{ fontSize: 11, color: C.textMuted, marginTop: 1 }}>
-                        {Object.values(PRODUCTS).filter(v => v[3] === c).length} productos
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 1 — Product list */}
-          {cat && !selected && (
-            <div className="fade">
-              <div style={{ position: 'relative', marginBottom: 16 }}>
-                <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: C.textMuted }}
-                  width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-                </svg>
-                <input value={search} onChange={e => setSearch(e.target.value)}
-                  placeholder={`Buscar en ${cat}...`}
-                  style={{
-                    width: '100%', padding: '11px 36px', borderRadius: 12,
-                    border: `1.5px solid ${C.border}`, background: C.surface,
-                    fontSize: 14, color: C.text, boxShadow: `0 1px 3px ${C.shadow}`,
-                  }} />
-                {search && (
-                  <button onClick={() => setSearch('')} style={{
-                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted, fontSize: 18, lineHeight: 1,
-                  }}>×</button>
-                )}
-              </div>
-              <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 12 }}>
-                {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}{search ? ` para "${search}"` : ''}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                {filtered.map(([slug, [title, sku, w]]) => (
-                  <button key={slug} onClick={() => setSelected(slug)} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-                    padding: '13px 14px', borderRadius: 13, textAlign: 'left',
-                    border: `1.5px solid ${C.border}`, background: C.surface, cursor: 'pointer',
-                    boxShadow: `0 1px 3px ${C.shadow}`, transition: 'all 0.14s',
-                  }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {title}
-                      </div>
-                      <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{sku} · {w} kg</div>
-                    </div>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.textMuted} strokeWidth="2.5" strokeLinecap="round">
-                      <path d="m9 18 6-6-6-6" />
-                    </svg>
-                  </button>
-                ))}
-                {filtered.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '40px 20px', color: C.textMuted }}>
-                    Sin resultados para "{search}"
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Step 2 — Result */}
-          {cat && selected && selectedProduct && (
-            <div>
-              <button onClick={() => setSelected(null)} style={{
-                display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none',
-                color: C.textMuted, cursor: 'pointer', padding: '0 0 14px', fontSize: 13, fontWeight: 500,
-              }}>‹ Volver a {cat}</button>
-              <ResultCard slug={selected} product={selectedProduct} />
-              <button onClick={() => setSelected(null)} style={{
-                width: '100%', marginTop: 6, padding: '12px', borderRadius: 14,
-                background: 'transparent', border: `1.5px solid ${C.border}`,
-                color: C.textMuted, fontSize: 14, fontWeight: 600, cursor: 'pointer',
-              }}>Ver otro producto</button>
-            </div>
-          )}
+      {/* ── PRODUCTS ── */}
+      <section className="section" id="productos">
+        <div className="section-header reveal">
+          <span className="section-tag">Nuestras líneas</span>
+          <h2 className="section-title">Tres líneas.<br />Una sola fuente.</h2>
+          <p className="section-sub">Producto disponible en bodega para entrega inmediata. Mayoreo y menudeo.</p>
         </div>
 
-        {/* Footer */}
-        <footer style={{ background: C.surface, borderTop: `1px solid ${C.border}`, padding: '22px 18px 32px', textAlign: 'center' }}>
-          <a href="https://surtiaceros.com" target="_blank" rel="noopener noreferrer"
-            style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 5, textDecoration: 'none', marginBottom: 12 }}>
-            <img src={LOGO} alt="" style={{ height: 26, opacity: 0.7, borderRadius: 4 }} />
-            <span style={{ fontSize: 10.5, color: C.accent, fontWeight: 700, letterSpacing: '0.04em' }}>www.surtiaceros.com</span>
+        <div className="cat-grid">
+          {/* DRYWALL */}
+          <div className="cat-card reveal">
+            <div className="cat-header drywall">
+              <span className="cat-icon">🏗️</span>
+              <div className="cat-num">01 — Construcción en seco</div>
+              <div className="cat-title">Tablaroca & Drywall</div>
+              <div className="cat-desc">Panel, perfilería metálica y acabados para muros y techos interiores.</div>
+            </div>
+            <div className="cat-body">
+              <ul className="product-list">
+                {DRYWALL_PRODUCTS.map(({ name, badge }) => (
+                  <li className="product-item" key={name}>
+                    <span>{name}</span>
+                    {badge && <span className="product-badge">{badge}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="cat-footer">
+              <a href="#contacto" className="cat-link">Ver todos los productos →</a>
+            </div>
+          </div>
+
+          {/* ELECTRICAL */}
+          <div className="cat-card reveal delay-1">
+            <div className="cat-header elec">
+              <span className="cat-icon">⚡</span>
+              <div className="cat-num">02 — Instalaciones eléctricas</div>
+              <div className="cat-title">Materiales Eléctricos</div>
+              <div className="cat-desc">Cable, protecciones, canalizaciones y luminarias para todo tipo de obra.</div>
+            </div>
+            <div className="cat-body">
+              <ul className="product-list">
+                {ELEC_PRODUCTS.map(({ name, badge }) => (
+                  <li className="product-item" key={name}>
+                    <span>{name}</span>
+                    {badge && <span className="product-badge">{badge}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="cat-footer">
+              <a href="#contacto" className="cat-link">Ver todos los productos →</a>
+            </div>
+          </div>
+
+          {/* PLUMBING */}
+          <div className="cat-card reveal delay-2">
+            <div className="cat-header plumb">
+              <span className="cat-icon">🔧</span>
+              <div className="cat-num">03 — Sistemas hidráulicos</div>
+              <div className="cat-title">Plomería</div>
+              <div className="cat-desc">Tubería, accesorios y conexiones para sistemas hidráulicos y sanitarios.</div>
+            </div>
+            <div className="cat-body">
+              <ul className="product-list">
+                {PLUMB_PRODUCTS.map(({ name, badge }) => (
+                  <li className="product-item" key={name}>
+                    <span>{name}</span>
+                    {badge && <span className="product-badge">{badge}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="cat-footer">
+              <a href="#contacto" className="cat-link">Ver todos los productos →</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── NOSOTROS ── */}
+      <section className="section section-alt" id="nosotros">
+        {/* Top: texto + foto equipo */}
+        <div className="nosotros-grid">
+          <div className="reveal">
+            <span className="section-tag">Nosotros</span>
+            <h2 className="section-title" style={{ marginBottom: "1.8rem" }}>
+              Tu mejor opción<br /><span style={{ color: "var(--green)" }}>confiable.</span>
+            </h2>
+            <div className="nosotros-text">
+              <p>
+                En Surtielek somos una empresa comprometida con brindar calidad, excelente
+                servicio y los mejores precios a nuestros clientes. Formamos parte de{" "}
+                <strong>Surtiaceros del Pacífico S.A. de C.V.</strong>, lo que respalda
+                nuestra experiencia y solidez en el mercado.
+              </p>
+              <p>
+                Fuimos fundados en el año <strong>2024</strong> en{" "}
+                <strong>Playas de Rosarito, Baja California</strong>, desde donde atendemos
+                y distribuimos nuestros productos en Playas de Rosarito, Tijuana, Tecate y
+                Ensenada. Además, realizamos envíos a toda la República Mexicana con costo,
+                adaptándonos a las necesidades de cada cliente.
+              </p>
+              <p>
+                Nos distingue nuestra <strong>transparencia</strong> — siempre publicamos
+                nuestros precios de forma clara — y nuestro compromiso por ofrecer el mayor
+                surtido posible en electricidad, plomería y construcción ligera.
+              </p>
+            </div>
+            {/* Cobertura pills */}
+            <div className="cobertura">
+              <span className="cob-label">Cobertura directa</span>
+              {["Playas de Rosarito", "Tijuana", "Tecate", "Ensenada"].map((c) => (
+                <span className="cob-pill" key={c}>{c}</span>
+              ))}
+              <span className="cob-pill cob-pill-alt">📦 Envíos a toda la República</span>
+            </div>
+          </div>
+
+          {/* FOTO EQUIPO */}
+          <div className="reveal delay-1">
+            {/* IMAGEN: pon "equipo-surtielek.jpg" en /public/equipo-surtielek.jpg */}
+            <div className="equipo-wrap">
+              <img
+                src="/equipo-surtielek.jpg"
+                alt="Equipo Surtielek"
+                className="equipo-img"
+              />
+              <div className="equipo-badge">
+                <span className="equipo-badge-year">2024</span>
+                <span className="equipo-badge-label">Fundación · Rosarito, B.C.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom: 4 pilares */}
+        <div className="pilares-grid">
+          {WHY_ITEMS.map(({ icon, title, desc }, i) => (
+            <div className={`pilar-card reveal delay-${Math.min(i, 2)}`} key={title}>
+              <div className="pilar-icon">{icon}</div>
+              <h4 className="pilar-title">{title}</h4>
+              <p className="pilar-desc">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── CTA ── */}
+      <section className="cta-section" id="contacto">
+        <p className="cta-tag">Empieza hoy</p>
+        <h2 className="cta-title">
+          ¿Listo para<br /><span className="g">cotizar tu proyecto?</span>
+        </h2>
+        <p className="cta-sub">Sin burocracia. Te respondemos rápido con precio y disponibilidad.</p>
+        <div className="cta-buttons">
+          <a href="tel:+526611008946" className="btn-white">📞 Llamar ahora</a>
+          <a href="https://wa.me/526611008946" className="btn-green-outline" target="_blank" rel="noreferrer">💬 WhatsApp</a>
+        </div>
+        <div style={{ marginTop: "1.5rem" }}>
+          <a
+            href="https://surtiaceros.com/surtielek"
+            target="_blank"
+            rel="noreferrer"
+            className="btn-catalog-dark"
+          >
+            🛒 Consultar precios y productos
           </a>
-          <p style={{ fontSize: 12, fontWeight: 700, color: C.text, margin: '0 0 3px' }}>Surtiaceros del Pacífico S.A. de C.V.</p>
-          <p style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.7, margin: '0 0 8px' }}>
-            Calle Aguascalientes No. 4255, Col. Constitución<br />Playas de Rosarito, B.C., C.P. 22707
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '4px 12px', marginBottom: 10 }}>
-            <a href="tel:6616137038" style={{ fontSize: 11, color: C.accent, textDecoration: 'none' }}>📞 661 613 7038</a>
-            <a href="tel:6616137040" style={{ fontSize: 11, color: C.accent, textDecoration: 'none' }}>📞 661 613 7040</a>
-            <a href="mailto:contacto@surtiaceros.com" style={{ fontSize: 11, color: C.accent, textDecoration: 'none' }}>✉️ contacto@surtiaceros.com</a>
-          </div>
-          <p style={{ fontSize: 10, color: C.textMuted, lineHeight: 1.6 }}>
-            Entregas sin costo en Playas de Rosarito y Tijuana, B.C.<br />
-            Precios con IVA incluido · © {new Date().getFullYear()} · v5.0
-          </p>
-        </footer>
-      </div>
-    </div>
-  )
-}
+        </div>
+        <div className="contact-row">
+          {[
+            { label: "Teléfono", val: "661-100-8946" },
+            { label: "WhatsApp", val: "661-100-8946" },
+            { label: "Correo", val: "ventas@surtielek.com" },
+          ].map(({ label, val }) => (
+            <div className="contact-item" key={label}>
+              <span className="contact-label">{label}</span>
+              <span className="contact-val">{val}</span>
+            </div>
+          ))}
+        </div>
+      </section>
 
-export default App
+      {/* ── FOOTER ── */}
+      <footer>
+        <div className="footer-logo">
+          <img src="/logo-surtielek.jpg" alt="Surtielek" style={{ height: "32px", width: "auto", objectFit: "contain", filter: "brightness(0) invert(1)" }} />
+        </div>
+        <p className="footer-copy">© 2025 Surtielek. Todos los derechos reservados.</p>
+        <p className="footer-group">Grupo <span>Surtiaceros del Pacífico S.A. de C.V.</span></p>
+      </footer>
+    </>
+  );
+}
